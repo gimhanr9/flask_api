@@ -13,18 +13,18 @@ from myapp.auth_middleware import token_required
 def get_profile(current_user):
     try:
         user_id=current_user.get('id')
-        ref=db.reference('/users/' + user_id)
+        # ref=db.reference('/users/' + user_id)
         visitor_ref=db.reference('/visitors/' + user_id)
-        snapshot = ref.get()
-        if snapshot is None:
-            return{
-                'message':'Unauthorized access',
-                'data':None
-            },401
+        # snapshot = ref.get()
+        # if snapshot is None:
+        #     return{
+        #         'message':'Unauthorized access',
+        #         'data':None
+        #     },401
 
         profile_data=[]
-        user_data={'name':snapshot.get('name'),'email':snapshot.get('email')}
-        profile_data.append(user_data)
+        # user_data={'name':snapshot.get('name'),'email':snapshot.get('email')}
+        # profile_data.append(user_data)
         visitor_snapshot=visitor_ref.get()
         if visitor_snapshot is not None:
             for key,val in visitor_snapshot:
@@ -124,7 +124,7 @@ def add_visitor(current_user):
         data=request.json
         if not data:
             return {
-                'message': 'Please provide user details',
+                'message': 'Please provide visitor details',
                 'data': None,
                 'error': 'Bad request'
             }, 400
@@ -132,7 +132,19 @@ def add_visitor(current_user):
         user_id=current_user.get('id')
         fname=data.get('fname')
         lname=data.get('lname')
-        image_url=''
+        image_file = request.files['image']
+        if image_file.filename == '':
+            return {
+                'message':'File not found',
+                'data':None,
+                'error': 'Bad request'
+            }, 400
+        image_path='./images/'+ image_file.filename
+        image_file.save(image_path)
+        blob=bucket.blob(image_path)
+        blob.upload_from_filename(image_path)
+        blob.make_public()
+        image_url=blob.public_url
         visitor_ref=db.reference('/visitors/' + user_id)
         visitor_ref.push({'imageUrl':image_url,'firstName':fname,'lastName':lname})
        
@@ -147,3 +159,86 @@ def add_visitor(current_user):
                 'data': None
         }, 500
 
+
+
+@app.route('/api/editvisitor',methods=['POST'])
+@token_required
+def edit_visitor(current_user):
+    try:
+        data=request.json
+        if not data:
+            return {
+                'message': 'Please provide visitor details',
+                'data': None,
+                'error': 'Bad request'
+            }, 400
+
+        user_id=current_user.get('id')
+        visitor_id=data.get('id')
+        fname=data.get('fname')
+        lname=data.get('lname')
+        previous_image=data.get('image_url')
+        image_file = request.files['image']
+        if image_file.filename == '':
+            return {
+                'message':'File not found',
+                'data':None,
+                'error': 'Bad request'
+            }, 400
+
+        previous_blob=bucket.blob(previous_image)
+        previous_blob.delete()
+        image_path='./images/'+ image_file.filename
+        image_file.save(image_path)
+        blob=bucket.blob(image_path)
+        blob.upload_from_filename(image_path)
+        blob.make_public()
+        image_url=blob.public_url
+        visitor_ref=db.reference('/visitors/' + user_id)
+        visitor_ref.child(visitor_id).update({'imageUrl':image_url,'firstName':fname,'lastName':lname})
+       
+        return {
+            'message':'Visitor edited successfully',
+            'data':None
+        },200
+    except Exception as e:
+        return {
+                'message': 'Something went wrong!',
+                'error': str(e),
+                'data': None
+        }, 500
+
+
+@app.route('/api/deletevisitor',methods=['POST'])
+@token_required
+def edit_visitor(current_user):
+    try:
+        data=request.json
+        if not data:
+            return {
+                'message': 'Please provide visitor details',
+                'data': None,
+                'error': 'Bad request'
+            }, 400
+
+        user_id=current_user.get('id')
+        visitor_id=data.get('id')
+        image_url=data.get('image_url')
+       
+        blob=bucket.blob(image_path)
+        blob.upload_from_filename(image_path)
+        blob.make_public()
+        image_url=blob.public_url
+        visitor_ref=db.reference('/visitors/' + user_id)
+        visitor_ref.push({'imageUrl':image_url,'firstName':fname,'lastName':lname})
+       
+        return {
+            'message':'Visitor removed successfully',
+            'data':None
+        },200
+    except Exception as e:
+        return {
+                'message': 'Something went wrong!',
+                'error': str(e),
+                'data': None
+        }, 500
