@@ -2,7 +2,7 @@ from functools import wraps
 import jwt
 from flask import request, jsonify
 from flask import current_app
-
+#comment
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
