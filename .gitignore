@@ -128,6 +128,9 @@ ENV/
 env.bak/
 venv.bak/
 
+#key.json
+key.json
+
 # Spyder project settings
 .spyderproject
 .spyproject
